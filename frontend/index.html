@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escuela de Música - Sistema de Matrículas</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-music text-indigo-500 text-2xl"></i>
+                <h1 class="text-xl font-bold tracking-wide">Escuela de Música <span class="text-indigo-400 text-sm font-normal">| Portal de Matrículas</span></h1>
+            </div>
+            <div class="text-xs bg-slate-700 px-3 py-1.5 rounded-full text-slate-300">
+                Alumno: <span class="font-semibold text-indigo-300">Mathias Fernández</span> (C1)
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+
+        <!-- SECCIÓN 1: Catálogo de Cursos desde la API -->
+        <section>
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-guitar text-indigo-400"></i> Cursos Disponibles
+                    </h2>
+                    <p class="text-slate-400 text-sm">Catálogo sincronizado desde el servidor API (FastAPI)</p>
+                </div>
+                <button id="btn-reload" onclick="cargarCursos()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 px-3 py-1.5 rounded-lg text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> Recargar API
+                </button>
+            </div>
+
+            <!-- Visor de Estado: Carga (Loading) -->
+            <div id="api-loading" class="hidden text-center py-12 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                <i class="fa-solid fa-circle-notch fa-spin text-4xl text-indigo-500 mb-3"></i>
+                <p class="text-slate-300 font-medium">Conectando con la API de cursos...</p>
+                <p class="text-xs text-slate-500 mt-1">Consultando http://127.0.0.1:8000/api/cursos</p>
+            </div>
+
+            <!-- Visor de Estado: Error -->
+            <div id="api-error" class="hidden bg-rose-950/40 border border-rose-800/60 rounded-xl p-6 text-center text-rose-200">
+                <i class="fa-solid fa-triangle-exclamation text-3xl mb-2 text-rose-400"></i>
+                <h3 class="font-bold text-lg">No se pudo conectar con la API</h3>
+                <p class="text-sm text-rose-300/80 mt-1" id="api-error-msg">Asegúrate de que el servidor Uvicorn esté iniciado en el puerto 8000.</p>
+                <div class="mt-4 bg-slate-900/80 p-3 rounded text-left font-mono text-xs text-slate-300 max-w-md mx-auto">
+                    $ uvicorn main:app --host 0.0.0.0 --port 8000
+                </div>
+            </div>
+
+            <!-- Visor de Estado: Éxito / Contenedor de Cursos -->
+            <div id="cursos-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Se llena dinámicamente con JavaScript -->
+            </div>
+        </section>
+
+        <hr class="border-slate-800">
+
+        <!-- SECCIÓN 2: Sistema CRUD de Matrículas (LocalStorage) -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Formulario de Registro / Edición -->
+            <div class="lg:col-span-1 bg-slate-800/80 p-6 rounded-xl border border-slate-700/80 shadow-lg h-fit">
+                <h3 class="text-xl font-bold mb-4 flex items-center gap-2" id="form-title">
+                    <i class="fa-solid fa-user-plus text-indigo-400"></i> Registrar Nueva Matrícula
+                </h3>
+
+                <form id="form-matricula" onsubmit="guardarMatricula(event)" class="space-y-4">
+                    <input type="hidden" id="matricula-id">
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Nombre Completo</label>
+                        <input type="text" id="alumno-nombre" required placeholder="Ej: Carlos Mendoza"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500 text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Correo Electrónico</label>
+                        <input type="email" id="alumno-email" required placeholder="ejemplo@correo.com"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500 text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Curso a Matricular</label>
+                        <select id="alumno-curso" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500 text-sm">
+                            <option value="">Cargando catálogo...</option>
+                        </select>
+                        <p class="text-[11px] text-slate-500 mt-1">Obtenido en tiempo real desde la API.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Horario Preferente</label>
+                        <select id="alumno-horario" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500 text-sm">
+                            <option value="Mañana (09:00 - 12:00)">Mañana (09:00 - 12:00)</option>
+                            <option value="Tarde (14:00 - 17:00)">Tarde (14:00 - 17:00)</option>
+                            <option value="Vespertino (18:00 - 21:00)">Vespertino (18:00 - 21:00)</option>
+                        </select>
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button type="submit" id="btn-submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg text-sm transition shadow-md shadow-indigo-900/30">
+                            Guardar Matrícula
+                        </button>
+                        <button type="button" id="btn-cancel" onclick="cancelarEdicion()" class="hidden bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold py-2 px-3 rounded-lg text-sm transition">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tabla / Lista de Matrículas Almacenadas -->
+            <div class="lg:col-span-2 bg-slate-800/80 p-6 rounded-xl border border-slate-700/80 shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="text-xl font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-indigo-400"></i> Alumnos Matriculados
+                        </h3>
+                        <p class="text-slate-400 text-xs">Datos persistentes almacenados en LocalStorage</p>
+                    </div>
+                    <span id="total-matriculas" class="bg-indigo-950 text-indigo-300 border border-indigo-800 text-xs font-bold px-2.5 py-1 rounded-full">
+                        0 Alumnos
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="bg-slate-900/80 text-xs uppercase text-slate-400 border-b border-slate-700">
+                            <tr>
+                                <th class="py-3 px-4">Alumno</th>
+                                <th class="py-3 px-4">Curso</th>
+                                <th class="py-3 px-4">Horario</th>
+                                <th class="py-3 px-4 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-matriculas" class="divide-y divide-slate-700/50">
+                            <!-- Se llena dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="empty-state" class="text-center py-8 text-slate-500">
+                    <i class="fa-regular fa-folder-open text-3xl mb-2"></i>
+                    <p class="text-sm">No hay matrículas registradas en LocalStorage.</p>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- JavaScript Principal -->
+    <script>
+        const API_URL = "http://127.0.0.1:8000/api/cursos";
+        let cursosCache = [];
+
+        // --- Cargar Cursos de la API (FETCH) ---
+        async function cargarCursos() {
+            const loading = document.getElementById("api-loading");
+            const errorBox = document.getElementById("api-error");
+            const container = document.getElementById("cursos-container");
+            const selectCurso = document.getElementById("alumno-curso");
+
+            // Estado: ⏳ Carga
+            loading.classList.remove("hidden");
+            errorBox.classList.add("hidden");
+            container.innerHTML = "";
+
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                const data = await response.json();
+                cursosCache = data.cursos;
+
+                // Estado: ✅ Éxito - Renderizar Cursos
+                renderizarCursos(data.cursos);
+                poblarSelectCursos(data.cursos);
+
+            } catch (err) {
+                // Estado: ❌ Error
+                console.error("Error consultando API:", err);
+                document.getElementById("api-error-msg").innerText = "No se pudo establecer conexión con " + API_URL;
+                errorBox.classList.remove("hidden");
+                selectCurso.innerHTML = `<option value="">⚠️ Error cargando cursos</option>`;
+            } finally {
+                loading.classList.add("hidden");
+            }
+        }
+
+        function renderizarCursos(cursos) {
+            const container = document.getElementById("cursos-container");
+            container.innerHTML = cursos.map(curso => `
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-md flex flex-col justify-between">
+                    <div>
+                        <div class="relative h-40 bg-slate-900">
+                            <img src="${curso.imagen}" alt="${curso.nombre}" class="w-full h-full object-cover">
+                            <span class="absolute top-2 right-2 px-2.5 py-1 rounded-md text-xs font-bold ${curso.disponible ? 'bg-emerald-900/90 text-emerald-300 border border-emerald-700' : 'bg-rose-900/90 text-rose-300 border border-rose-700'}">
+                                ${curso.disponible ? 'Disponible' : 'Agotado'}
+                            </span>
+                        </div>
+                        <div class="p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-bold text-lg text-white">${curso.nombre}</h3>
+                                <span class="text-xs bg-slate-700 text-indigo-300 px-2 py-0.5 rounded font-mono">${curso.categoria}</span>
+                            </div>
+                            <p class="text-slate-400 text-xs mb-3 line-clamp-2">${curso.descripcion}</p>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-slate-900/40 border-t border-slate-700/50 flex justify-between items-center">
+                        <span class="text-indigo-400 font-bold text-base">$${curso.precio.toLocaleString('es-CL')}</span>
+                        <button onclick="seleccionarCursoParaMatricula('${curso.nombre}')" ${!curso.disponible ? 'disabled' : ''} 
+                            class="px-3 py-1.5 rounded text-xs font-semibold ${curso.disponible ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'} transition">
+                            Matricular
+                        </button>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        function poblarSelectCursos(cursos) {
+            const selectCurso = document.getElementById("alumno-curso");
+            selectCurso.innerHTML = `<option value="">-- Selecciona un Curso --</option>` + 
+                cursos.map(c => `<option value="${c.nombre}" ${!c.disponible ? 'disabled' : ''}>${c.nombre} ($${c.precio.toLocaleString('es-CL')}) ${!c.disponible ? '- Agotado' : ''}</option>`).join("");
+        }
+
+        function seleccionarCursoParaMatricula(nombreCurso) {
+            document.getElementById("alumno-curso").value = nombreCurso;
+            document.getElementById("form-matricula").scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- CRUD LOCAL STORAGE (Matrículas) ---
+        function obtenerMatriculasLS() {
+            return JSON.parse(localStorage.getItem("matriculas_musica") || "[]");
+        }
+
+        function guardarMatriculaLS(matriculas) {
+            localStorage.setItem("matriculas_musica", JSON.stringify(matriculas));
+        }
+
+        function renderizarTablaMatriculas() {
+            const matriculas = obtenerMatriculasLS();
+            const tbody = document.getElementById("tabla-matriculas");
+            const emptyState = document.getElementById("empty-state");
+            const badgeTotal = document.getElementById("total-matriculas");
+
+            badgeTotal.innerText = `${matriculas.length} Alumno${matriculas.length !== 1 ? 's' : ''}`;
+
+            if (matriculas.length === 0) {
+                tbody.innerHTML = "";
+                emptyState.classList.remove("hidden");
+                return;
+            }
+
+            emptyState.classList.add("hidden");
+            tbody.innerHTML = matriculas.map(m => `
+                <tr class="hover:bg-slate-700/30 transition">
+                    <td class="py-3 px-4">
+                        <div class="font-semibold text-slate-100">${m.nombre}</div>
+                        <div class="text-xs text-slate-400">${m.email}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="inline-block bg-indigo-950/80 border border-indigo-800 text-indigo-300 text-xs px-2 py-0.5 rounded">
+                            ${m.curso}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-xs text-slate-300">${m.horario}</td>
+                    <td class="py-3 px-4 text-center">
+                        <button onclick="prepararEditarMatricula(${m.id})" class="text-slate-400 hover:text-indigo-400 p-1.5 transition" title="Editar">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="eliminarMatricula(${m.id})" class="text-slate-400 hover:text-rose-400 p-1.5 transition" title="Eliminar">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        function guardarMatricula(event) {
+            event.preventDefault();
+            const id = document.getElementById("matricula-id").value;
+            const nombre = document.getElementById("alumno-nombre").value;
+            const email = document.getElementById("alumno-email").value;
+            const curso = document.getElementById("alumno-curso").value;
+            const horario = document.getElementById("alumno-horario").value;
+
+            let matriculas = obtenerMatriculasLS();
+
+            if (id) {
+                // Editar
+                matriculas = matriculas.map(m => m.id == id ? { id: Number(id), nombre, email, curso, horario } : m);
+            } else {
+                // Crear
+                const nuevaMatricula = { id: Date.now(), nombre, email, curso, horario };
+                matriculas.push(nuevaMatricula);
+            }
+
+            guardarMatriculaLS(matriculas);
+            renderizarTablaMatriculas();
+            cancelarEdicion();
+        }
+
+        function prepararEditarMatricula(id) {
+            const matriculas = obtenerMatriculasLS();
+            const item = matriculas.find(m => m.id === id);
+            if (!item) return;
+
+            document.getElementById("matricula-id").value = item.id;
+            document.getElementById("alumno-nombre").value = item.nombre;
+            document.getElementById("alumno-email").value = item.email;
+            document.getElementById("alumno-curso").value = item.curso;
+            document.getElementById("alumno-horario").value = item.horario;
+
+            document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-user-pen text-amber-400"></i> Editar Matrícula`;
+            document.getElementById("btn-submit").innerText = "Actualizar Matrícula";
+            document.getElementById("btn-submit").className = "flex-1 bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 px-4 rounded-lg text-sm transition";
+            document.getElementById("btn-cancel").classList.remove("hidden");
+        }
+
+        function cancelarEdicion() {
+            document.getElementById("form-matricula").reset();
+            document.getElementById("matricula-id").value = "";
+            document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-user-plus text-indigo-400"></i> Registrar Nueva Matrícula`;
+            document.getElementById("btn-submit").innerText = "Guardar Matrícula";
+            document.getElementById("btn-submit").className = "flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg text-sm transition shadow-md shadow-indigo-900/30";
+            document.getElementById("btn-cancel").classList.add("hidden");
+        }
+
+        function eliminarMatricula(id) {
+            if (confirm("¿Estás seguro de que deseas eliminar esta matrícula?")) {
+                let matriculas = obtenerMatriculasLS();
+                matriculas = matriculas.filter(m => m.id !== id);
+                guardarMatriculaLS(matriculas);
+                renderizarTablaMatriculas();
+            }
+        }
+
+        // --- Inicialización al Cargar la Página ---
+        window.addEventListener("DOMContentLoaded", () => {
+            cargarCursos();
+            renderizarTablaMatriculas();
+        });
+    </script>
+</body>
+</html>
